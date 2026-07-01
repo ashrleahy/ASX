@@ -327,7 +327,6 @@ export default async function PortfolioPage() {
 
         <PortfolioEditor
           initial={holdingRows.map((h) => ({ ...h }))}
-          onSave={() => {}}
         />
 
         <footer>
