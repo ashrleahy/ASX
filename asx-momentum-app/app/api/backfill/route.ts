@@ -44,13 +44,12 @@ export async function GET(request: NextRequest) {
 
   for (const ticker of allTickers) {
     try {
-      const bars = await fetchHistory(ticker, from);
-      for (const bar of bars) {
-        await sql`
-          INSERT INTO prices (ticker, date, close)
-          VALUES (${ticker}, ${bar.date}, ${bar.close})
-          ON CONFLICT (ticker, date) DO UPDATE SET close = EXCLUDED.close
-        `;
+      if (bars.length > 0) {
+        const values = bars.map(b => `('${ticker}', '${b.date}', ${b.close})`).join(',');
+        await sql.query(
+          `INSERT INTO prices (ticker, date, close) VALUES ${values}
+           ON CONFLICT (ticker, date) DO UPDATE SET close = EXCLUDED.close`
+        );
       }
       ok++;
     } catch (e) {
