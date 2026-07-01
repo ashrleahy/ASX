@@ -16,9 +16,11 @@ export const maxDuration = 300; // needs Pro plan for >60s; on Hobby, re-run a f
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
+  const secretParam = new URL(request.url).searchParams.get("secret");
   if (
     process.env.CRON_SECRET &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
+    authHeader !== `Bearer ${process.env.CRON_SECRET}` &&
+    secretParam !== process.env.CRON_SECRET
   ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
