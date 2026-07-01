@@ -11,12 +11,9 @@
   --accent-green: #6fae8c;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
   background: var(--bg);
@@ -24,17 +21,12 @@ body {
   font-family: var(--font-mono), ui-monospace, monospace;
 }
 
-h1,
-h2,
-h3,
-.display {
+h1, h2, h3, .display {
   font-family: var(--font-display), sans-serif;
   letter-spacing: -0.01em;
 }
 
-a {
-  color: var(--accent-gold);
-}
+a { color: var(--accent-gold); }
 
 .page {
   max-width: 1080px;
@@ -42,7 +34,6 @@ a {
   padding: 0 24px 64px;
 }
 
-/* --- Signature element: ticker tape header --- */
 .tape {
   width: 100%;
   overflow: hidden;
@@ -64,30 +55,18 @@ a {
   border-right: 1px solid var(--border);
 }
 
-.tape-track span.up {
-  color: var(--accent-green);
-}
-
-.tape-track span.down {
-  color: var(--accent-rose);
-}
+.tape-track span.up   { color: var(--accent-green); }
+.tape-track span.down { color: var(--accent-rose); }
 
 @keyframes tape-scroll {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tape-track {
-    animation: none;
-  }
+  .tape-track { animation: none; }
 }
 
-/* --- Header --- */
 .header {
   padding: 40px 0 28px;
   border-bottom: 1px solid var(--border);
@@ -115,7 +94,6 @@ a {
   max-width: 560px;
 }
 
-/* --- Panels --- */
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -132,12 +110,7 @@ a {
   margin: 0 0 16px;
 }
 
-/* --- Table --- */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
 th {
   text-align: left;
@@ -150,19 +123,10 @@ th {
   border-bottom: 1px solid var(--border);
 }
 
-td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #1d2330;
-}
+td { padding: 10px 12px; border-bottom: 1px solid #1d2330; }
+tr:hover td { background: var(--bg-panel-raised); }
 
-tr:hover td {
-  background: var(--bg-panel-raised);
-}
-
-.num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
+.num { text-align: right; font-variant-numeric: tabular-nums; }
 
 .pill {
   display: inline-block;
@@ -171,15 +135,8 @@ tr:hover td {
   font-size: 11px;
 }
 
-.pill.buy {
-  background: rgba(212, 162, 76, 0.15);
-  color: var(--accent-gold);
-}
-
-.pill.out {
-  background: rgba(181, 97, 79, 0.15);
-  color: var(--accent-rose);
-}
+.pill.buy { background: rgba(212,162,76,0.15); color: var(--accent-gold); }
+.pill.out { background: rgba(181,97,79,0.15);  color: var(--accent-rose); }
 
 .stat-grid {
   display: grid;
@@ -201,13 +158,8 @@ tr:hover td {
   font-weight: 700;
 }
 
-.stat-value.positive {
-  color: var(--accent-green);
-}
-
-.stat-value.negative {
-  color: var(--accent-rose);
-}
+.stat-value.positive { color: var(--accent-green); }
+.stat-value.negative { color: var(--accent-rose); }
 
 .empty-state {
   color: var(--text-dim);
@@ -228,3 +180,61 @@ footer {
   text-align: center;
   padding-top: 24px;
 }
+
+/* Ticker links */
+.ticker-link {
+  color: var(--accent-gold);
+  text-decoration: none;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.ticker-link:hover { text-decoration: underline; }
+
+.company-name { color: var(--text-dim); font-size: 11px; font-weight: 400; }
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--accent-gold); }
+
+/* Factor score cards */
+.factor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.factor-card {
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.factor-card.strong { border-color: var(--accent-green); }
+.factor-card.weak   { border-color: var(--accent-rose); }
+
+.factor-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.factor-value {
+  font-family: var(--font-display), sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.factor-card.strong  .factor-value { color: var(--accent-green); }
+.factor-card.weak    .factor-value { color: var(--accent-rose); }
+.factor-card.neutral .factor-value { color: var(--text); }
+
+.factor-sub { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
