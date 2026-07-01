@@ -34,13 +34,18 @@ export async function GET(request: NextRequest) {
     try {
       const bars = await fetchHistory(ticker, from);
       if (bars.length > 0) {
-        const values = bars
-          .map((b) => `('${ticker}', '${b.date}', ${b.close})`)
-          .join(",");
-        await sql.query(
-          `INSERT INTO prices (ticker, date, close) VALUES ${values}
-           ON CONFLICT (ticker, date) DO UPDATE SET close = EXCLUDED.close`
-        );
+        const tickers = bars.map(() => ticker);
+        const dates = bars.map((b) => b.date);
+        const closes = bars.map((b) => b.close);
+        await sql`
+          INSERT INTO prices (ticker, date, close)
+          SELECT * FROM unnest(
+            ${tickers}::text[],
+            ${dates}::date[],
+            ${closes}::float8[]
+          )
+          ON CONFLICT (ticker, date) DO UPDATE SET close = EXCLUDED.close
+        `;
       }
       ok++;
     } catch (e) {
