@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic"; // always read fresh from the DB
 
 async function loadPrices() {
   const rows = (await sql`
-    SELECT ticker, date, close FROM prices
+    SELECT ticker, date::text, close FROM prices
     WHERE ticker = ANY(${[...TICKERS, BENCHMARK]})
     ORDER BY ticker, date ASC
   `) as { ticker: string; date: string; close: number }[];
