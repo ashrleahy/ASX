@@ -12,7 +12,15 @@ import {
 
 export type EquityPoint = { date: string; strategy: number; benchmark: number };
 
-export default function EquityChart({ data }: { data: EquityPoint[] }) {
+export default function EquityChart({
+  data,
+  singleLine = false,
+  label = "Price",
+}: {
+  data: EquityPoint[];
+  singleLine?: boolean;
+  label?: string;
+}) {
   return (
     <ResponsiveContainer width="100%" height={320}>
       <LineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -16 }}>
@@ -35,19 +43,21 @@ export default function EquityChart({ data }: { data: EquityPoint[] }) {
         <Line
           type="monotone"
           dataKey="strategy"
-          name="Momentum strategy"
+          name={singleLine ? label : "Momentum strategy"}
           stroke="#d4a24c"
           strokeWidth={2}
           dot={false}
         />
-        <Line
-          type="monotone"
-          dataKey="benchmark"
-          name="ASX 200"
-          stroke="#8b93a3"
-          strokeWidth={1.5}
-          dot={false}
-        />
+        {!singleLine && (
+          <Line
+            type="monotone"
+            dataKey="benchmark"
+            name="ASX 200"
+            stroke="#8b93a3"
+            strokeWidth={1.5}
+            dot={false}
+          />
+        )}
       </LineChart>
     </ResponsiveContainer>
   );
