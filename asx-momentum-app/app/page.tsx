@@ -7,12 +7,15 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 async function loadData() {
-  const [priceRows, fundRows] = await Promise.all([
-    sql`SELECT ticker, date::text, close FROM prices
-        WHERE ticker = ANY(${[...TICKERS, BENCHMARK]})
-        ORDER BY ticker, date ASC` as unknown as Promise<{ ticker: string; date: string; close: number }[]>,
-    sql`SELECT * FROM fundamentals WHERE ticker = ANY(${TICKERS})` as unknown as Promise<Fundamentals[]>,
-  ]);
+  const priceRows = await sql`
+    SELECT ticker, date::text, close FROM prices
+    WHERE ticker = ANY(${[...TICKERS, BENCHMARK]})
+    ORDER BY ticker, date ASC
+  ` as unknown as { ticker: string; date: string; close: number }[];
+
+  const fundRows = await sql`
+    SELECT * FROM fundamentals WHERE ticker = ANY(${TICKERS})
+  ` as unknown as Fundamentals[];
 
   const byTicker: Record<string, Bar[]> = {};
   for (const r of priceRows) {
