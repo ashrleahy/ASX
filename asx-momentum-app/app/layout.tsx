@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Space_Grotesk, IBM_Plex_Mono } from "next/font/google";
+import Link from "next/link";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -15,17 +16,24 @@ const mono = IBM_Plex_Mono({
 
 export const metadata = {
   title: "ASX Momentum",
-  description: "12-1 momentum + trend-filter signal dashboard for ASX equities",
+  description: "Multi-factor signal dashboard for ASX equities",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${display.variable} ${mono.variable}`}>{children}</body>
+      <body className={`${display.variable} ${mono.variable}`}>
+        <nav className="nav">
+          <div className="nav-inner">
+            <span className="nav-brand">ASX Signals</span>
+            <div className="nav-links">
+              <Link href="/" className="nav-link">Signal board</Link>
+              <Link href="/portfolio" className="nav-link">Portfolio</Link>
+            </div>
+          </div>
+        </nav>
+        {children}
+      </body>
     </html>
   );
 }
