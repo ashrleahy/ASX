@@ -284,3 +284,62 @@ footer {
   color: var(--text);
   background: var(--bg-panel);
 }
+
+/* --- Portfolio editor --- */
+.editor-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  padding: 5px 8px;
+  width: 100%;
+  outline: none;
+}
+
+.editor-input:focus {
+  border-color: var(--accent-gold);
+}
+
+.btn-primary {
+  background: var(--accent-gold);
+  border: none;
+  border-radius: 4px;
+  color: #11151c;
+  cursor: pointer;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+
+.btn-primary:hover { background: #e6b55c; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+
+.btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+
+.btn-danger {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--accent-rose);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.btn-danger:hover { border-color: var(--accent-rose); }
