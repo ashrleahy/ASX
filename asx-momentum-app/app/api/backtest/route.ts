@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const rows = (await sql`
-    SELECT ticker, date, close FROM prices
+    SELECT ticker, date::text, close FROM prices
     WHERE ticker = ANY(${[...TICKERS, BENCHMARK]})
     ORDER BY ticker, date ASC
   `) as { ticker: string; date: string; close: number }[];
