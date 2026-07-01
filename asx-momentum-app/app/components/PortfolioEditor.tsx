@@ -13,10 +13,8 @@ type Row = {
 
 export default function PortfolioEditor({
   initial,
-  onSave,
 }: {
   initial: Row[];
-  onSave: () => void;
 }) {
   const [rows, setRows] = useState<Row[]>(initial);
   const [editing, setEditing] = useState<number | null>(null);
