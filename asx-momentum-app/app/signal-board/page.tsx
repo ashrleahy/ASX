@@ -1,6 +1,6 @@
 import { sql } from "@/lib/db";
 import { TICKERS, BENCHMARK } from "@/lib/universe";
-import { computeSignals, rankSignals, backtest, computeMarketRegime, type Bar, type Fundamentals, type Signal, type RankedPick } from "@/lib/momentum";
+import { computeSignals, rankSignals, backtest, computeMarketRegime, computeDeepValueWatchlist, type Bar, type Fundamentals, type Signal, type RankedPick } from "@/lib/momentum";
 import EquityChart from "@/app/components/EquityChart";
 import Link from "next/link";
 
@@ -29,10 +29,14 @@ async function loadData() {
 
 function pct(x: number) { return `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)}%`; }
 function score(x: number) { return Math.round(x * 100); }
+function fmtPct(v: number | null): string {
+  if (v == null) return '—';
+  return `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`;
+}
 
 function qualityBadge(q: Signal['dataQuality']) {
-  if (q === 'full')    return { stars: '★★★', color: 'var(--accent-green)', title: 'All 3 factors: momentum + value + quality' };
-  if (q === 'partial') return { stars: '★★☆', color: 'var(--accent-gold)',  title: '2 factors: missing one fundamental metric' };
+  if (q === 'full')    return { stars: '★★★', color: 'var(--accent-green)', title: 'All 4 factors: momentum + value (EV/EBITDA + FCF) + quality + PEG' };
+  if (q === 'partial') return { stars: '★★☆', color: 'var(--accent-gold)',  title: '2-3 factors: some fundamental data missing' };
   return                      { stars: '★☆☆', color: 'var(--text-dim)',     title: 'Price only — no fundamental data available' };
 }
 
@@ -77,6 +81,8 @@ export default async function Page() {
     stats        = result.stats;
   }
 
+  const deepValue = computeDeepValueWatchlist(signals);
+
   const fullCount    = signals.filter(s => s.dataQuality === 'full').length;
   const partialCount = signals.filter(s => s.dataQuality === 'partial').length;
   const priceOnly    = signals.filter(s => s.dataQuality === 'price-only').length;
@@ -91,7 +97,7 @@ export default async function Page() {
           {!picks.length && signals.slice(0, 15).map((s, i) => (
             <span key={i} className={s.momentum >= 0 ? 'up' : 'down'}>{s.ticker.replace('.AX', '')} {pct(s.momentum)}</span>
           ))}
-          {!signals.length && <span>No signal data yet — run /api/backfill to get started</span>}
+          {!signals.length && <span>No signal data yet</span>}
         </div>
       </div>
 
@@ -100,9 +106,9 @@ export default async function Page() {
           <div className="eyebrow">ASX · Multi-factor signals</div>
           <h1>Signal board</h1>
           <p>
-            Composite score: <strong>momentum 40%</strong>, <strong>value 30%</strong>, <strong>quality 30%</strong>.
-            Position sizing: <strong>inverse volatility</strong>. Max <strong>2 stocks per sector</strong>.
-            Weekly rebalance. Click any ticker for full detail.
+            Composite: <strong>momentum 35%</strong>, <strong>value 25%</strong> (EV/EBITDA + FCF yield),{' '}
+            <strong>quality 25%</strong>, <strong>PEG 15%</strong>.
+            Inverse vol sizing · max 2 per sector · weekly rebalance.
           </p>
         </div>
 
@@ -124,22 +130,17 @@ export default async function Page() {
         )}
 
         {dbError && (
-          <div className="panel">
-            <p className="empty-state">Database error: <code>{dbError}</code></p>
-          </div>
+          <div className="panel"><p className="empty-state">Database error: <code>{dbError}</code></p></div>
         )}
 
         {!dbError && !hasData && (
-          <div className="panel">
-            <p className="empty-state">No price history yet — run <code>/api/backfill</code> first.</p>
-          </div>
+          <div className="panel"><p className="empty-state">No price history yet — run <code>/api/backfill</code> first.</p></div>
         )}
 
         {!dbError && hasData && !hasFundamentals && (
           <div className="panel">
             <p className="empty-state">
-              ⚠ No fundamental data — value and quality scores showing as —.
-              Run <code>/api/backfill-fundamentals</code> in batches to populate them.
+              ⚠ No fundamental data — run <code>/api/backfill-fundamentals</code> in batches to populate value, quality and PEG scores.
             </p>
           </div>
         )}
@@ -148,11 +149,11 @@ export default async function Page() {
           <div className="panel" style={{ padding: '14px 24px' }}>
             <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 12 }}>
               <span style={{ color: 'var(--text-dim)' }}>Data quality:</span>
-              <span style={{ color: 'var(--accent-green)' }}>★★★ Full ({fullCount})</span>
+              <span style={{ color: 'var(--accent-green)' }}>★★★ Full 4-factor ({fullCount})</span>
               <span style={{ color: 'var(--accent-gold)' }}>★★☆ Partial ({partialCount})</span>
               <span style={{ color: 'var(--text-dim)' }}>★☆☆ Price only ({priceOnly})</span>
               <span style={{ color: 'var(--text-dim)', marginLeft: 'auto' }}>
-                Sector cap: max 2 per sector · Sizing: 1/volatility weighted
+                Value = EV/EBITDA + FCF yield · PEG = price/earnings ÷ growth
               </span>
             </div>
           </div>
@@ -176,6 +177,7 @@ export default async function Page() {
                     <th className="num">Mom</th>
                     <th className="num">Val</th>
                     <th className="num">Qual</th>
+                    <th className="num">PEG</th>
                     <th className="num">12-1 return</th>
                     <th className="num">30d vol</th>
                     <th>Data</th>
@@ -200,6 +202,7 @@ export default async function Page() {
                         <td className="num">{score(p.momentumScore)}</td>
                         <td className="num">{p.valueScore   != null ? score(p.valueScore)   : '—'}</td>
                         <td className="num">{p.qualityScore != null ? score(p.qualityScore) : '—'}</td>
+                        <td className="num">{p.pegScore     != null ? score(p.pegScore)     : '—'}</td>
                         <td className="num">{pct(p.momentum)}</td>
                         <td className="num" style={{ color: 'var(--text-dim)', fontSize: 12 }}>
                           {p.realisedVol != null ? pct(p.realisedVol) : '—'}
@@ -211,6 +214,58 @@ export default async function Page() {
                 </tbody>
               </table>
             </div>
+
+            {deepValue.length > 0 && (
+              <div className="panel">
+                <p className="panel-title">
+                  Deep value watchlist — {deepValue.length} stocks below trend · high value + quality
+                </p>
+                <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 16px' }}>
+                  Currently excluded from picks (below 200-day MA) but scoring well on fundamentals.
+                  Watch for trend reversal — if they clear their 200d MA they enter the eligible universe.
+                </p>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ticker</th>
+                      <th>Sector</th>
+                      <th className="num">vs 200d MA</th>
+                      <th className="num">Value</th>
+                      <th className="num">Quality</th>
+                      <th className="num">PEG score</th>
+                      <th className="num">EV/EBITDA</th>
+                      <th className="num">FCF yield</th>
+                      <th className="num">ROE</th>
+                      <th className="num">Raw PEG</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deepValue.map((d) => (
+                      <tr key={d.ticker}>
+                        <td>
+                          <Link href={`/stock/${d.ticker.replace('.AX', '')}`} className="ticker-link">
+                            {d.ticker.replace('.AX', '')}
+                          </Link>
+                          {d.company_name && <span className="company-name"> {d.company_name}</span>}
+                        </td>
+                        <td style={{ fontSize: 11, color: 'var(--text-dim)' }}>{d.sector ?? '—'}</td>
+                        <td className="num" style={{ color: 'var(--accent-rose)' }}>{fmtPct(d.pctFromSma)}</td>
+                        <td className="num"><strong style={{ color: 'var(--accent-gold)' }}>{score(d.valueScore)}</strong></td>
+                        <td className="num"><strong style={{ color: 'var(--accent-gold)' }}>{score(d.qualityScore)}</strong></td>
+                        <td className="num">{d.pegScore != null ? score(d.pegScore) : '—'}</td>
+                        <td className="num" style={{ fontSize: 12 }}>{d.ev_to_ebitda != null ? `${d.ev_to_ebitda.toFixed(1)}x` : '—'}</td>
+                        <td className="num" style={{ fontSize: 12 }}>{d.fcfYield != null ? fmtPct(d.fcfYield) : '—'}</td>
+                        <td className="num" style={{ fontSize: 12 }}>{d.return_on_equity != null ? fmtPct(d.return_on_equity) : '—'}</td>
+                        <td className="num" style={{ fontSize: 12, color: 'var(--text-dim)' }}>{d.peg_ratio != null ? d.peg_ratio.toFixed(2) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p style={{ marginTop: 12, fontSize: 11, color: 'var(--text-dim)' }}>
+                  PEG &lt; 1.0 = potentially cheap relative to growth · EV/EBITDA &lt; 10x = generally good value for ASX industrials/materials
+                </p>
+              </div>
+            )}
 
             <div className="panel">
               <p className="panel-title">
@@ -251,6 +306,7 @@ export default async function Page() {
                     <th className="num">Mom</th>
                     <th className="num">Val</th>
                     <th className="num">Qual</th>
+                    <th className="num">PEG</th>
                     <th className="num">12-1 return</th>
                     <th className="num">30d vol</th>
                     <th>Trend</th>
@@ -272,6 +328,7 @@ export default async function Page() {
                         <td className="num">{score(s.momentumScore)}</td>
                         <td className="num">{s.valueScore   != null ? score(s.valueScore)   : '—'}</td>
                         <td className="num">{s.qualityScore != null ? score(s.qualityScore) : '—'}</td>
+                        <td className="num">{s.pegScore     != null ? score(s.pegScore)     : '—'}</td>
                         <td className="num">{pct(s.momentum)}</td>
                         <td className="num" style={{ color: 'var(--text-dim)', fontSize: 12 }}>
                           {s.realisedVol != null ? pct(s.realisedVol) : '—'}
@@ -281,20 +338,4 @@ export default async function Page() {
                             {s.aboveTrend ? 'above' : 'below'}
                           </span>
                         </td>
-                        <td><span title={qb.title} style={{ color: qb.color, fontSize: 13 }}>{qb.stars}</span></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-
-        <footer>
-          Free-data prototype · ~80 liquid ASX names · survivorship bias present · not financial advice
-        </footer>
-      </div>
-    </main>
-  );
-}
+                        <td><span title={qb.title} style={{
