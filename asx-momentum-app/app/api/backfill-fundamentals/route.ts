@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const offset = parseInt(searchParams.get("offset") ?? "0", 10);
-  const limit = parseInt(searchParams.get("limit") ?? `${TICKERS.length}`, 10);
-  const batch = TICKERS.slice(offset, offset + limit);
+  const limit  = parseInt(searchParams.get("limit")  ?? `${TICKERS.length}`, 10);
+  const batch  = TICKERS.slice(offset, offset + limit);
 
   let ok = 0;
   let failed = 0;
@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         INSERT INTO fundamentals (
           ticker, updated_at,
           trailing_pe, forward_pe, price_to_book,
+          ev_to_ebitda, free_cashflow, peg_ratio, earnings_growth,
           return_on_equity, debt_to_equity, current_ratio,
           gross_margins, operating_margins,
           market_cap, beta, dividend_yield,
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
         ) VALUES (
           ${f.ticker}, now(),
           ${f.trailing_pe}, ${f.forward_pe}, ${f.price_to_book},
+          ${f.ev_to_ebitda}, ${f.free_cashflow}, ${f.peg_ratio}, ${f.earnings_growth},
           ${f.return_on_equity}, ${f.debt_to_equity}, ${f.current_ratio},
           ${f.gross_margins}, ${f.operating_margins},
           ${f.market_cap}, ${f.beta}, ${f.dividend_yield},
@@ -48,24 +50,28 @@ export async function GET(request: NextRequest) {
           ${f.sector}, ${f.industry}, ${f.company_name}, ${f.description}
         )
         ON CONFLICT (ticker) DO UPDATE SET
-          updated_at          = now(),
-          trailing_pe         = EXCLUDED.trailing_pe,
-          forward_pe          = EXCLUDED.forward_pe,
-          price_to_book       = EXCLUDED.price_to_book,
-          return_on_equity    = EXCLUDED.return_on_equity,
-          debt_to_equity      = EXCLUDED.debt_to_equity,
-          current_ratio       = EXCLUDED.current_ratio,
-          gross_margins       = EXCLUDED.gross_margins,
-          operating_margins   = EXCLUDED.operating_margins,
-          market_cap          = EXCLUDED.market_cap,
-          beta                = EXCLUDED.beta,
-          dividend_yield      = EXCLUDED.dividend_yield,
+          updated_at        = now(),
+          trailing_pe       = EXCLUDED.trailing_pe,
+          forward_pe        = EXCLUDED.forward_pe,
+          price_to_book     = EXCLUDED.price_to_book,
+          ev_to_ebitda      = EXCLUDED.ev_to_ebitda,
+          free_cashflow     = EXCLUDED.free_cashflow,
+          peg_ratio         = EXCLUDED.peg_ratio,
+          earnings_growth   = EXCLUDED.earnings_growth,
+          return_on_equity  = EXCLUDED.return_on_equity,
+          debt_to_equity    = EXCLUDED.debt_to_equity,
+          current_ratio     = EXCLUDED.current_ratio,
+          gross_margins     = EXCLUDED.gross_margins,
+          operating_margins = EXCLUDED.operating_margins,
+          market_cap        = EXCLUDED.market_cap,
+          beta              = EXCLUDED.beta,
+          dividend_yield    = EXCLUDED.dividend_yield,
           fifty_two_week_high = EXCLUDED.fifty_two_week_high,
           fifty_two_week_low  = EXCLUDED.fifty_two_week_low,
-          sector              = EXCLUDED.sector,
-          industry            = EXCLUDED.industry,
-          company_name        = EXCLUDED.company_name,
-          description         = EXCLUDED.description
+          sector            = EXCLUDED.sector,
+          industry          = EXCLUDED.industry,
+          company_name      = EXCLUDED.company_name,
+          description       = EXCLUDED.description
       `;
       ok++;
     } catch (e) {
