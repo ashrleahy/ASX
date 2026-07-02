@@ -343,3 +343,23 @@ footer {
 }
 
 .btn-danger:hover { border-color: var(--accent-rose); }
+
+/* --- Market regime banner --- */
+.regime-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  border: 1px solid;
+}
+
+.regime-banner.bull    { background: rgba(111,174,140,0.1); border-color: var(--accent-green); color: var(--accent-green); }
+.regime-banner.bear    { background: rgba(181,97,79,0.1);   border-color: var(--accent-rose);  color: var(--accent-rose);  }
+.regime-banner.unknown { background: rgba(139,147,163,0.1); border-color: var(--border);       color: var(--text-dim);     }
+
+.regime-left  { display: flex; align-items: center; gap: 8px; }
+.regime-dot   { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.regime-right { font-size: 12px; opacity: 0.9; }
