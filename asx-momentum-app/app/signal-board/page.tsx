@@ -1,7 +1,7 @@
 import { sql } from "@/lib/db";
 import { TICKERS, BENCHMARK } from "@/lib/universe";
 import { computeSignals, rankSignals, backtest, computeMarketRegime, type Bar, type Fundamentals, type Signal, type RankedPick } from "@/lib/momentum";
-import EquityChart from "./components/EquityChart";
+import EquityChart from "@/app/components/EquityChart";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
