@@ -2,6 +2,7 @@ import { sql } from "@/lib/db";
 import { TICKERS, BENCHMARK } from "@/lib/universe";
 import { computeSignals, computeMarketRegime, rankSignals, type Bar, type Fundamentals } from "@/lib/momentum";
 import { fetchHistory } from "@/lib/yahoo";
+import { fetchLiveQuotes } from "@/lib/quotes";
 import Link from "next/link";
 import PortfolioEditor from "@/app/components/PortfolioEditor";
 import TradeSuggestions, { type TradePick } from "@/app/components/TradeSuggestions";
@@ -81,6 +82,12 @@ function fmtPct(v: number | null): string {
   return `${v >= 0 ? "+" : ""}${(v * 100).toFixed(1)}%`;
 }
 
+function fmtChg(change: number | null, changePct: number | null): string {
+  if (change == null || changePct == null) return "—";
+  const sign = change >= 0 ? "+" : "";
+  return `${sign}$${Math.abs(change).toFixed(2)} (${sign}${changePct.toFixed(2)}%)`;
+}
+
 export default async function PortfolioPage() {
   const [holdingRows, settingsRows] = await Promise.all([
     sql`SELECT id, ticker, label, quantity, type, in_universe FROM portfolio ORDER BY id ASC` as unknown as Promise<HoldingConfig[]>,
@@ -128,14 +135,21 @@ export default async function PortfolioPage() {
     })
   );
 
+  const liveQuotes = await fetchLiveQuotes(holdingRows.map((h) => h.ticker));
+  const marketState = [...liveQuotes.values()].find((q) => q.marketState)?.marketState ?? null;
+
   const rows = holdingRows.map((h) => {
+    const lq = liveQuotes.get(h.ticker);
     if (h.in_universe) {
       const sig = signalMap.get(h.ticker);
+      const price = lq?.price ?? sig?.lastClose ?? null;
       return {
         ...h,
-        lastClose:      sig?.lastClose      ?? null,
+        lastClose:      price,
         lastDate:       sig?.lastDate       ?? null,
-        value:          sig?.lastClose != null ? sig.lastClose * h.quantity : null,
+        value:          price != null ? price * h.quantity : null,
+        change:         lq?.change          ?? null,
+        changePercent:  lq?.changePercent   ?? null,
         momentum:       sig?.momentum       ?? null,
         aboveTrend:     sig?.aboveTrend     ?? null,
         pctFromSma:     sig?.pctFromSma     ?? null,
@@ -144,9 +158,13 @@ export default async function PortfolioPage() {
       };
     } else {
       const sig = basicSignal(liveBars[h.ticker] ?? []);
+      const price = lq?.price ?? sig.lastClose ?? null;
       return {
         ...h, ...sig,
-        value:          sig.lastClose != null ? sig.lastClose * h.quantity : null,
+        lastClose:      price,
+        value:          price != null ? price * h.quantity : null,
+        change:         lq?.change          ?? null,
+        changePercent:  lq?.changePercent   ?? null,
         compositeScore: null,
         rec: recommend(h.type, sig.aboveTrend, sig.momentum),
       };
@@ -167,10 +185,25 @@ export default async function PortfolioPage() {
         <div className="header">
           <div className="eyebrow">Portfolio · Signal overlay</div>
           <h1>My portfolio</h1>
-          <p>
-            Buy / hold / reduce signals on your holdings. ASX stocks use the full multi-factor
-            composite score. ETFs and crypto use momentum + 200-day trend only.
-          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 8 }}>
+            <p style={{ margin: 0, fontSize: 14, color: "var(--text-dim)" }}>
+              Buy / hold / reduce signals on your holdings. Prices are 15-min delayed during market hours.
+            </p>
+            <a href="/portfolio" style={{ fontSize: 12, color: "var(--accent-gold)", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}>
+              ↻ Refresh prices
+            </a>
+          </div>
+          {marketState && (
+            <div style={{ marginTop: 10 }}>
+              <span style={{
+                fontSize: 11, padding: "3px 10px", borderRadius: 999,
+                background: marketState === "REGULAR" ? "rgba(111,174,140,0.15)" : "rgba(139,147,163,0.1)",
+                color: marketState === "REGULAR" ? "var(--accent-green)" : "var(--text-dim)",
+              }}>
+                {marketState === "REGULAR" ? "● Market open" : marketState === "CLOSED" ? "Market closed" : marketState}
+              </span>
+            </div>
+          )}
         </div>
 
         {holdingRows.length === 0 && (
@@ -182,7 +215,7 @@ export default async function PortfolioPage() {
         {rows.length > 0 && (
           <>
             <div className="panel">
-              <p className="panel-title">Summary · as of {rows.find((r) => r.lastDate)?.lastDate}</p>
+              <p className="panel-title">Summary</p>
               <div className="stat-grid">
                 <div>
                   <div className="stat-label">Total value (AUD)</div>
@@ -199,6 +232,11 @@ export default async function PortfolioPage() {
                         </span>
                       )}
                     </div>
+                    {r.change != null && (
+                      <div style={{ fontSize: 12, marginTop: 2, color: r.change >= 0 ? "var(--accent-green)" : "var(--accent-rose)" }}>
+                        {r.change >= 0 ? "+" : ""}${Math.abs(r.change * r.quantity).toFixed(2)} today
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div>
@@ -248,6 +286,7 @@ export default async function PortfolioPage() {
                     <th>Holding</th>
                     <th className="num">Qty</th>
                     <th className="num">Price</th>
+                    <th className="num">Today</th>
                     <th className="num">Value</th>
                     <th className="num">12-1 return</th>
                     <th>Trend</th>
@@ -256,50 +295,69 @@ export default async function PortfolioPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.id}>
-                      <td>
-                        {r.in_universe ? (
-                          <Link href={`/stock/${r.ticker.replace(".AX", "")}`} className="ticker-link">{r.label}</Link>
-                        ) : (
-                          <span style={{ fontWeight: 600 }}>{r.label}</span>
-                        )}
-                        <span className="company-name"> {r.ticker}</span>
-                      </td>
-                      <td className="num" style={{ fontSize: 12 }}>
-                        {r.type === "crypto" ? Number(r.quantity).toFixed(8) : r.quantity}
-                      </td>
-                      <td className="num">{fmtAud(r.lastClose)}</td>
-                      <td className="num"><strong>{fmtAud(r.value)}</strong></td>
-                      <td className="num">{fmtPct(r.momentum)}</td>
-                      <td>
-                        {r.aboveTrend !== null ? (
-                          <>
-                            <span className={`pill ${r.aboveTrend ? "buy" : "out"}`}>
-                              {r.aboveTrend ? "▲ above" : "▼ below"}
-                            </span>
-                            {r.pctFromSma != null && (
-                              <span style={{ marginLeft: 6, fontSize: 11, color: "var(--text-dim)" }}>
-                                {fmtPct(r.pctFromSma)}
+                  {rows.map((r) => {
+                    const isUp   = r.change != null && r.change > 0;
+                    const isDown = r.change != null && r.change < 0;
+                    return (
+                      <tr key={r.id}>
+                        <td>
+                          {r.in_universe ? (
+                            <Link href={`/stock/${r.ticker.replace(".AX", "")}`} className="ticker-link">{r.label}</Link>
+                          ) : (
+                            <span style={{ fontWeight: 600 }}>{r.label}</span>
+                          )}
+                          <span className="company-name"> {r.ticker}</span>
+                        </td>
+                        <td className="num" style={{ fontSize: 12 }}>
+                          {r.type === "crypto" ? Number(r.quantity).toFixed(8) : r.quantity}
+                        </td>
+                        <td className="num">{fmtAud(r.lastClose)}</td>
+                        <td className="num">
+                          {r.change != null && r.changePercent != null ? (
+                            <span style={{ color: isUp ? "var(--accent-green)" : isDown ? "var(--accent-rose)" : "var(--text-dim)" }}>
+                              <span style={{ display: "block", fontSize: 13 }}>
+                                {r.change >= 0 ? "+" : ""}${Math.abs(r.change).toFixed(2)}
                               </span>
-                            )}
-                          </>
-                        ) : "—"}
-                      </td>
-                      <td className="num">
-                        {r.compositeScore != null
-                          ? <strong>{Math.round(r.compositeScore * 100)}</strong>
-                          : <span style={{ color: "var(--text-dim)" }}>—</span>}
-                      </td>
-                      <td>
-                        <span className={`pill ${r.rec.badge}`} style={{ fontSize: 12, padding: "3px 10px" }}>
-                          {r.rec.action}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                              <span style={{ fontSize: 11 }}>
+                                {r.changePercent >= 0 ? "+" : ""}{r.changePercent.toFixed(2)}%
+                              </span>
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td className="num"><strong>{fmtAud(r.value)}</strong></td>
+                        <td className="num">{fmtPct(r.momentum)}</td>
+                        <td>
+                          {r.aboveTrend !== null ? (
+                            <>
+                              <span className={`pill ${r.aboveTrend ? "buy" : "out"}`}>
+                                {r.aboveTrend ? "▲ above" : "▼ below"}
+                              </span>
+                              {r.pctFromSma != null && (
+                                <span style={{ marginLeft: 6, fontSize: 11, color: "var(--text-dim)" }}>
+                                  {fmtPct(r.pctFromSma)}
+                                </span>
+                              )}
+                            </>
+                          ) : "—"}
+                        </td>
+                        <td className="num">
+                          {r.compositeScore != null
+                            ? <strong>{Math.round(r.compositeScore * 100)}</strong>
+                            : <span style={{ color: "var(--text-dim)" }}>—</span>}
+                        </td>
+                        <td>
+                          <span className={`pill ${r.rec.badge}`} style={{ fontSize: 12, padding: "3px 10px" }}>
+                            {r.rec.action}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
+              <p style={{ marginTop: 10, fontSize: 11, color: "var(--text-dim)" }}>
+                Prices from Yahoo Finance · 15-min delayed · <a href="/portfolio" style={{ color: "var(--accent-gold)" }}>↻ refresh</a>
+              </p>
             </div>
 
             {rows.map((r) => (
@@ -317,6 +375,11 @@ export default async function PortfolioPage() {
                     <div>
                       <div className="stat-label">Price</div>
                       <div className="stat-value" style={{ fontSize: 20 }}>{fmtAud(r.lastClose)}</div>
+                      {r.change != null && r.changePercent != null && (
+                        <div style={{ fontSize: 12, marginTop: 2, color: r.change >= 0 ? "var(--accent-green)" : "var(--accent-rose)" }}>
+                          {fmtChg(r.change, r.changePercent)} today
+                        </div>
+                      )}
                     </div>
                     <div>
                       <div className="stat-label">12-1 momentum</div>
