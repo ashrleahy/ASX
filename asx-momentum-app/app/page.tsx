@@ -65,7 +65,7 @@ export default async function Page() {
     signals = computeSignals(stockBars, fundsByTicker)
       .sort((a, b) => b.compositeScore - a.compositeScore);
 
-    const ranked = rankSignals(signals, 0.15);
+    const ranked = rankSignals(signals, regime, 0.15);
     picks = ranked.picks;
     eligibleCount = ranked.eligibleCount;
     universeCount = ranked.universeCount;
