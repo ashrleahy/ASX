@@ -47,10 +47,10 @@ type Rec = { action: string; badge: "buy" | "hold" | "out"; reason: string };
 function recommend(type: string, aboveTrend: boolean | null, momentum: number | null, compositeScore?: number | null): Rec {
   if (type === "asx-stock") {
     const s = compositeScore ?? 0;
-    if (s >= 0.75 && aboveTrend) return { action: "Add",                badge: "buy",  reason: "Top composite score + above 200d trend" };
-    if (s >= 0.5  && aboveTrend) return { action: "Hold / add on dips", badge: "hold", reason: "Strong score, above trend" };
-    if (s >= 0.25 && aboveTrend) return { action: "Hold",               badge: "hold", reason: "Moderate score, above trend" };
-    if (!aboveTrend && s >= 0.5) return { action: "Hold — watch trend", badge: "hold", reason: "Good score but below 200d MA" };
+    if (s >= 0.75 && aboveTrend)  return { action: "Add",                badge: "buy",  reason: "Top composite score + above 200d trend" };
+    if (s >= 0.5  && aboveTrend)  return { action: "Hold / add on dips", badge: "hold", reason: "Strong score, above trend" };
+    if (s >= 0.25 && aboveTrend)  return { action: "Hold",               badge: "hold", reason: "Moderate score, above trend" };
+    if (!aboveTrend && s >= 0.5)  return { action: "Hold — watch trend", badge: "hold", reason: "Good score but below 200d MA" };
     return { action: "Consider selling", badge: "out", reason: "Weak composite score or below 200d trend" };
   }
   if (type === "asx-etf") {
@@ -141,16 +141,14 @@ export default async function PortfolioPage() {
           <div className="eyebrow">Portfolio · Signal overlay</div>
           <h1>My portfolio</h1>
           <p>
-            Buy / hold / reduce signals on your holdings. ASX stocks use the full multi-factor
-            composite score. ETFs and crypto use momentum + 200-day trend only.
+            Buy / hold / reduce signals applied to your current holdings. ASX stocks use the
+            full multi-factor composite score. ETFs and crypto use momentum + 200-day trend only.
           </p>
         </div>
 
         {holdingRows.length === 0 && (
           <div className="panel">
-            <p className="empty-state">
-              No holdings yet — add your first one using the editor below.
-            </p>
+            <p className="empty-state">No holdings yet — add your first one using the editor below.</p>
           </div>
         )}
 
@@ -325,9 +323,7 @@ export default async function PortfolioPage() {
           </>
         )}
 
-        <PortfolioEditor
-          initial={holdingRows.map((h) => ({ ...h }))}
-        />
+        <PortfolioEditor initial={holdingRows.map((h) => ({ ...h }))} />
 
         <footer>
           Signals are for informational purposes only — not financial advice.
