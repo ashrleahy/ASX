@@ -48,7 +48,6 @@ export default function PortfolioEditor({
       const updated: Row = await res.json();
       setRows((prev) => prev.map((r) => (r.id === id ? updated : r)));
       setEditing(null);
-      onSave();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -67,7 +66,6 @@ export default function PortfolioEditor({
         body: JSON.stringify({ id }),
       });
       setRows((prev) => prev.filter((r) => r.id !== id));
-      onSave();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed");
     } finally {
@@ -100,7 +98,6 @@ export default function PortfolioEditor({
       setNewType("asx-stock");
       setNewInUniverse(false);
       setAdding(false);
-      onSave();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Add failed");
     } finally {
