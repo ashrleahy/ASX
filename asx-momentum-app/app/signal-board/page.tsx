@@ -338,4 +338,20 @@ export default async function Page() {
                             {s.aboveTrend ? 'above' : 'below'}
                           </span>
                         </td>
-                        <td><span title={qb.title} style={{
+                        <td><span title={qb.title} style={{ color: qb.color, fontSize: 13 }}>{qb.stars}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        <footer>
+          Free-data prototype · ~80 liquid ASX names · survivorship bias present · not financial advice
+        </footer>
+      </div>
+    </main>
+  );
+}
