@@ -51,7 +51,8 @@ function recommend(type: string, aboveTrend: boolean | null, momentum: number | 
     if (s >= 0.5  && aboveTrend)  return { action: "Hold / add on dips", badge: "hold", reason: "Strong score, above trend" };
     if (s >= 0.25 && aboveTrend)  return { action: "Hold",               badge: "hold", reason: "Moderate score, above trend" };
     if (!aboveTrend && s >= 0.5)  return { action: "Hold — watch trend", badge: "hold", reason: "Good score but below 200d MA" };
-    return { action: "Consider selling", badge: "out", reason: "Weak composite score or below 200d trend" };
+    if (aboveTrend) return { action: "Hold", badge: "hold", reason: "Above trend — check signal board for composite score" };
+return { action: "Consider selling", badge: "out", reason: "Below 200d trend and weak score" };
   }
   if (type === "asx-etf") {
     if (aboveTrend && momentum !== null && momentum > 0.05) return { action: "Good time to add",     badge: "buy",  reason: "Above trend + positive momentum" };
