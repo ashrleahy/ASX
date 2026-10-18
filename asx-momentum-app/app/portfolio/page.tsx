@@ -248,12 +248,13 @@ export default async function PortfolioPage() {
           )}
         </div>
 
-        <OvernightPanel view={overnight} />
-
         {holdingRows.length === 0 && (
-          <div className="panel">
-            <p className="empty-state">No holdings yet — add your first one using the editor below.</p>
-          </div>
+          <>
+            <div className="panel">
+              <p className="empty-state">No holdings yet — add your first one using the editor below.</p>
+            </div>
+            <OvernightPanel view={overnight} />
+          </>
         )}
 
         {rows.length > 0 && (
@@ -301,6 +302,8 @@ export default async function PortfolioPage() {
                 </div>
               </div>
             </div>
+
+            <OvernightPanel view={overnight} />
 
             <div className="panel">
               <p className="panel-title">Allocation</p>
