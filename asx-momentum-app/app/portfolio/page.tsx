@@ -6,6 +6,8 @@ import { fetchLiveQuotes } from "@/lib/quotes";
 import Link from "next/link";
 import PortfolioEditor from "@/app/components/PortfolioEditor";
 import TradeSuggestions, { type TradePick } from "@/app/components/TradeSuggestions";
+import OvernightPanel from "@/app/components/OvernightPanel";
+import { fetchOvernight } from "@/lib/overnight";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -84,8 +86,16 @@ function fmtPct(v: number | null): string {
 
 function fmtChg(change: number | null, changePct: number | null): string {
   if (change == null || changePct == null) return "—";
-  const sign = change >= 0 ? "+" : "";
-  return `${sign}$${Math.abs(change).toFixed(2)} (${sign}${changePct.toFixed(2)}%)`;
+  const sign = change >= 0 ? "+" : "−";
+  return `${sign}$${Math.abs(change).toFixed(2)} (${sign}${Math.abs(changePct).toFixed(2)}%)`;
+}
+
+function fmtSignedAud(v: number): string {
+  return `${v >= 0 ? "+" : "−"}$${Math.abs(v).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function fmtSignedPct(v: number): string {
+  return `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}%`;
 }
 
 export default async function PortfolioPage() {
@@ -135,7 +145,10 @@ export default async function PortfolioPage() {
     })
   );
 
-  const liveQuotes = await fetchLiveQuotes(holdingRows.map((h) => h.ticker));
+  const [liveQuotes, overnight] = await Promise.all([
+    fetchLiveQuotes(holdingRows.map((h) => h.ticker)),
+    fetchOvernight(),
+  ]);
   const marketState = [...liveQuotes.values()].find((q) => q.marketState)?.marketState ?? null;
 
   const rows = holdingRows.map((h) => {
@@ -173,6 +186,16 @@ export default async function PortfolioPage() {
 
   const investedValue = rows.reduce((sum, r) => sum + (r.value ?? 0), 0);
   const totalValue    = investedValue + settings.cash_balance;
+
+  // Portfolio-level daily move. % is measured against yesterday's value of the
+  // holdings that have a quote today (cash excluded — it doesn't move).
+  const moved      = rows.filter((r) => r.change != null && r.lastClose != null);
+  const dayChange  = moved.reduce((s, r) => s + r.change! * r.quantity, 0);
+  const prevValue  = moved.reduce((s, r) => s + (r.lastClose! - r.change!) * r.quantity, 0);
+  const dayPct     = moved.length && prevValue > 0 ? (dayChange / prevValue) * 100 : null;
+  const missing    = rows.length - moved.length;
+  const dayColor   = dayChange > 0 ? "var(--accent-green)" : dayChange < 0 ? "var(--accent-rose)" : "var(--text-dim)";
+  const hasCrypto  = moved.some((r) => r.type === "crypto");
   const COLORS = ["#d4a24c", "#6fae8c", "#7b9fc4", "#c47b9f", "#a4c47b", "#c47ba4"];
   const allocationRows = [
     ...rows.map((r, i) => ({ label: r.label, value: r.value ?? 0, color: COLORS[i % COLORS.length] })),
@@ -185,6 +208,25 @@ export default async function PortfolioPage() {
         <div className="header">
           <div className="eyebrow">Portfolio · Signal overlay</div>
           <h1>My portfolio</h1>
+          {rows.length > 0 && (
+            <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap", marginTop: 6 }}>
+              <span style={{ fontSize: 28, fontWeight: 700 }}>{fmtAud(totalValue)}</span>
+              {dayPct != null ? (
+                <span style={{ fontSize: 18, fontWeight: 600, color: dayColor }}>
+                  {dayChange > 0 ? "▲" : dayChange < 0 ? "▼" : "■"} {fmtSignedAud(dayChange)} ({fmtSignedPct(dayPct)}) today
+                </span>
+              ) : (
+                <span style={{ fontSize: 14, color: "var(--text-dim)" }}>No live quotes for today's change</span>
+              )}
+              {(missing > 0 || hasCrypto) && dayPct != null && (
+                <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                  {missing > 0 && `${missing} holding${missing > 1 ? "s" : ""} without a quote excluded`}
+                  {missing > 0 && hasCrypto && " · "}
+                  {hasCrypto && "crypto is a 24h move"}
+                </span>
+              )}
+            </div>
+          )}
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 8 }}>
             <p style={{ margin: 0, fontSize: 14, color: "var(--text-dim)" }}>
               Buy / hold / reduce signals on your holdings. Prices are 15-min delayed during market hours.
@@ -206,6 +248,8 @@ export default async function PortfolioPage() {
           )}
         </div>
 
+        <OvernightPanel view={overnight} />
+
         {holdingRows.length === 0 && (
           <div className="panel">
             <p className="empty-state">No holdings yet — add your first one using the editor below.</p>
@@ -220,6 +264,11 @@ export default async function PortfolioPage() {
                 <div>
                   <div className="stat-label">Total value (AUD)</div>
                   <div className="stat-value">{fmtAud(totalValue)}</div>
+                  {dayPct != null && (
+                    <div style={{ fontSize: 12, marginTop: 2, color: dayColor }}>
+                      {fmtSignedAud(dayChange)} ({fmtSignedPct(dayPct)}) today
+                    </div>
+                  )}
                 </div>
                 {rows.map((r) => (
                   <div key={r.id}>
@@ -234,7 +283,7 @@ export default async function PortfolioPage() {
                     </div>
                     {r.change != null && (
                       <div style={{ fontSize: 12, marginTop: 2, color: r.change >= 0 ? "var(--accent-green)" : "var(--accent-rose)" }}>
-                        {r.change >= 0 ? "+" : ""}${Math.abs(r.change * r.quantity).toFixed(2)} today
+                        {fmtSignedAud(r.change * r.quantity)} today
                       </div>
                     )}
                   </div>
@@ -316,10 +365,10 @@ export default async function PortfolioPage() {
                           {r.change != null && r.changePercent != null ? (
                             <span style={{ color: isUp ? "var(--accent-green)" : isDown ? "var(--accent-rose)" : "var(--text-dim)" }}>
                               <span style={{ display: "block", fontSize: 13 }}>
-                                {r.change >= 0 ? "+" : ""}${Math.abs(r.change).toFixed(2)}
+                                {r.change >= 0 ? "+" : "−"}${Math.abs(r.change).toFixed(2)}
                               </span>
                               <span style={{ fontSize: 11 }}>
-                                {r.changePercent >= 0 ? "+" : ""}{r.changePercent.toFixed(2)}%
+                                {fmtSignedPct(r.changePercent)}
                               </span>
                             </span>
                           ) : "—"}
